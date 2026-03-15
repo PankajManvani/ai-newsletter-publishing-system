@@ -1,0 +1,916 @@
+{
+  "name": "AI News #2: Publish",
+  "nodes": [
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4",
+          "mode": "list",
+          "cachedResultName": "GPT-4"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are an expert AI news analyst. You need to read all data from input which are related to news article with the following fields — Title, Link, Summary, Date, Source, Importance Score, and Virality Score — analyze the content and assign the most appropriate category from the list below. Base the decision on the subject matter of the Title and Summary, not just the source or keywords. retrun 7 news items. Please do not forget you always need to return 7 news articles and one should always be from Drone Defence & Uncrewed Systems if there is no drone news then return no drone news found, always return category field with output.\n\n\nEnsure Drone Defence Coverage\nFrom all articles, select only 7 stories.\nAmong these 7, at least one story must belong to Category 10 (Drone Defence & Uncrewed Systems).\nIf no Drone Defence story is present in the list, flag a warning: \"⚠️ No Drone Defence story found. Please include at least one.\"\n\n\nNow analyze the following JSON input:\n**Input Data to Process:**\n```\n{{JSON.stringify($input.all().map(item => ({\n  title: item.json.title || item.json.Title,\n  summary: item.json.summary || item.json.Summary || item.json.contentSnippet,\n  link: item.json.link || item.json.Link,\n  source: item.json.source || item.json.Source,\n  date: item.json.date || item.json.Date || item.json.pubDate,\n  importance_score: item.json.importance_score,\n  virality_score: item.json.virality_score,\n  category: item.json.category || item.json.Category\n})), null, 2)}}\n```\n\n\nCategories:\n\nAI Research & Breakthroughs\n\nProduct Releases & Updates\n\nVenture Capital & M&A\n\nCorporate Strategy & Partnerships\n\nPolicy, Regulation & Governance\n\nEthics, Safety & Responsible AI\n\nCybersecurity & Privacy\n\nHardware & Infrastructure\n\nFrontline Applications & Case Studies\n\nDrone Defence & Uncrewed Systems\n\n\n**Output Data should this list of objects which contains each item must contain the following fields:**\n\n- id\n- Title\n- Link\n- Summary\n- Date\n- Source\n- category \n- importance_score\n- virality_score\n\n\n\n**CRITICAL: Your response must ONLY contain a valid JSON array. Do not include any explanatory text, markdown formatting, or additional commentary. Return ONLY the JSON array.**",
+              "role": "system"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -2688,
+        -592
+      ],
+      "id": "a6cfc326-a1c1-46c3-ab8f-7ebd54d06b00",
+      "name": "OpenAI",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "maxItems": 7
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        -2864,
+        -592
+      ],
+      "id": "86d29bf8-71db-43a6-8cec-b64e5860799b",
+      "name": "Limit"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appGEmHkDqdbaGHJZ",
+          "mode": "list",
+          "cachedResultName": "n8n_test",
+          "cachedResultUrl": "https://airtable.com/appGEmHkDqdbaGHJZ"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblxaxBGLLdlu6a2p",
+          "mode": "list",
+          "cachedResultName": "Table 3",
+          "cachedResultUrl": "https://airtable.com/appGEmHkDqdbaGHJZ/tblxaxBGLLdlu6a2p"
+        },
+        "filterByFormula": "=AND(      IS_AFTER({Date}, DATEADD(TODAY(), -1, 'days')),      {importance_score} >= 5,      {virality_score} >= 5  )",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -3200,
+        -688
+      ],
+      "id": "e6c3c6f0-97e3-42de-81b0-5c480e55818d",
+      "name": " Fetch Daily Articles from Airtable"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appGEmHkDqdbaGHJZ",
+          "mode": "list",
+          "cachedResultName": "n8n_test",
+          "cachedResultUrl": "https://airtable.com/appGEmHkDqdbaGHJZ"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblxaxBGLLdlu6a2p",
+          "mode": "list",
+          "cachedResultName": "Table 3",
+          "cachedResultUrl": "https://airtable.com/appGEmHkDqdbaGHJZ/tblxaxBGLLdlu6a2p"
+        },
+        "filterByFormula": "AND(   IS_AFTER({Date}, DATEADD(TODAY(), -7, 'days')),   {importance_score} >= 5,   {virality_score} >= 5 )",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -3200,
+        -480
+      ],
+      "id": "d9051c3b-10c0-424d-ad7c-eddc423089ba",
+      "name": "Fetch Weekly Articles from Airtable",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $json.message.content;\nconsole.log(\"Raw content:\", content);\nconsole.log(\"Finish reason:\", $json.finish_reason);\n\nlet rawArticles = [];\n\n\n// Normalize response by removing code block markers and isolating JSON\nlet cleanContent = content.trim();\n\n// Remove code block markers (```json, ```), case-insensitive\ncleanContent = cleanContent.replace(/```(?:json)?\\s*/i, '').replace(/\\s*```/g, '').trim();\nconsole.log(\"Removed code block markers if present.\");\n\n// Try to extract just the array from surrounding content if needed\nconst arrayMatch = cleanContent.match(/\\[\\s*{[\\s\\S]*?}\\s*]/);\nif (arrayMatch) {\n  cleanContent = arrayMatch[0];\n  console.log(\"Extracted JSON array from mixed content.\");\n} else {\n  console.log(\"No array match found — using full cleaned content.\");\n}\n\n\nconsole.log(\"Clean content:\", cleanContent);\n\n// Check if response was truncated\nif ($json.finish_reason === \"length\") {\n  console.log(\"⚠️ Response was truncated due to length limit\");\n  \n  // Try to salvage what we can\n  try {\n    // Find the last complete object\n    const lastCompleteObjectEnd = cleanContent.lastIndexOf('}');\n    if (lastCompleteObjectEnd !== -1) {\n      // Find the array start\n      const arrayStart = cleanContent.indexOf('[');\n      if (arrayStart !== -1) {\n        // Extract up to the last complete object and close the array\n        let salvageContent = cleanContent.substring(arrayStart, lastCompleteObjectEnd + 1);\n        \n        // Check if we need to remove trailing comma\n        if (salvageContent.trim().endsWith(',')) {\n          salvageContent = salvageContent.trim().slice(0, -1);\n        }\n        \n        salvageContent += '\\n]';\n        \n        console.log(\"Attempting to parse salvaged content:\", salvageContent.substring(0, 200) + \"...\");\n        rawArticles = JSON.parse(salvageContent);\n        console.log(`Successfully salvaged ${rawArticles.length} articles from truncated response`);\n      }\n    }\n  } catch (salvageErr) {\n    console.log(\"Failed to salvage truncated content:\", salvageErr.message);\n    throw new Error(\"Response was truncated and could not be salvaged. Try reducing input size.\");\n  }\n} else {\n  // Normal processing for complete responses\n  try {\n    rawArticles = JSON.parse(cleanContent);\n    console.log(`Successfully parsed complete JSON with ${rawArticles.length} articles`);\n  } catch (err) {\n    console.log(\"Failed to parse complete JSON:\", err.message);\n    throw new Error(\"Failed to parse JSON: \" + err.message);\n  }\n}\n\nconsole.log(\"Articles before filtering:\", rawArticles.length);\n\n// Helper function to get property value case-insensitively\nfunction getProperty(obj, propName) {\n  // First try direct access\n  if (obj[propName] !== undefined) return obj[propName];\n  \n  // Then try case-insensitive search\n  const lowerProp = propName.toLowerCase();\n  for (const key in obj) {\n    if (key.toLowerCase() === lowerProp) {\n      return obj[key];\n    }\n  }\n  return undefined;\n}\n\n// FIXED: Filter out any placeholder/error articles using CASE-INSENSITIVE property names\nrawArticles = rawArticles.filter(article => {\n  const title = getProperty(article, 'title');\n  const link = getProperty(article, 'link');\n  \n  console.log(\"Checking article:\", article.id, title);\n  return article.id && \n         title && \n         !title.includes(\"⚠️\") &&\n         link !== \"#\" &&\n         link !== null;\n});\n\nconsole.log(`Final article count after filtering: ${rawArticles.length}`);\n\n// Function to get emoji based on category\nfunction getCategoryEmoji(category) {\n  const emojiMap = {\n    'Product Releases & Updates': '🚀',\n    'AI Research & Breakthroughs': '🧠',  \n    'Venture Capital & M&A': '💰',\n    'Cybersecurity & Privacy': '🔒',\n    'Drone Defence & Uncrewed Systems': '🚁',\n    'Frontline Applications & Case Studies': '⚡',\n    'Healthcare & Medical AI': '🏥',\n    'Autonomous Vehicles': '🚗',\n    'Tech Industry News': '📱',\n    'Government & Policy': '🏛️',\n    'Corporate Strategy & Partnerships': '🤝',\n    'Ethics, Safety & Responsible AI': '⚖️',\n    'Policy, Regulation & Governance': '📋'\n  };\n  return emojiMap[category] || '📰';\n}\n\n// Function to determine if article is \"latest\" (within last 2 days)\nfunction isLatestArticle(dateString) {\n  if (!dateString) return false;\n  const articleDate = new Date(dateString);\n  const twoDaysAgo = new Date();\n  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);\n  return articleDate > twoDaysAgo;\n}\n\n// Function to format date nicely\nfunction formatDate(dateString) {\n  if (!dateString) return 'Date not available';\n  const date = new Date(dateString);\n  return date.toLocaleDateString('en-US', { \n    year: 'numeric', \n    month: 'long', \n    day: 'numeric' \n  });\n}\n\n// Function to truncate content\nfunction truncateContent(content, maxLength = 300) {\n  if (!content || content.length <= maxLength) return content;\n  return content.substring(0, maxLength) + '...';\n}\n\n// FIXED: Transform articles using CASE-INSENSITIVE property access\nconst transformedArticles = rawArticles.map(article => ({\n  emoji: getCategoryEmoji(getProperty(article, 'category')),\n  title: getProperty(article, 'title'),\n  content: truncateContent(getProperty(article, 'summary')),\n  source: `Source: ${getProperty(article, 'source')}`,\n  isLatest: isLatestArticle(getProperty(article, 'date')),\n  link: getProperty(article, 'link'),\n  category: getProperty(article, 'category'),\n  importance: getProperty(article, 'importance_score') || 0,\n  virality: getProperty(article, 'virality_score') || 0,\n  publishDate: formatDate(getProperty(article, 'date'))\n}));\n\nconsole.log(`Transformed ${transformedArticles.length} articles`);\n\n// Sort by importance, then recency\ntransformedArticles.sort((a, b) => {\n  if (b.importance !== a.importance) return b.importance - a.importance;\n  return new Date(b.publishDate) - new Date(a.publishDate);\n});\n\n// Wrap for final HTML-ready data\nconst htmlData = {\n  title: `Top AI & Tech News (Through ${formatDate(new Date())})`,\n  subtitle: \"🚀 AI Innovation | 🔒 Cybersecurity | 💰 Startup Funding | 🧠 Research Breakthroughs\",\n  siteName: \"The AI Citizen\",\n  logoInitials: \"AC\",\n  authorName: \"The AI Citizen\", \n  authorInitials: \"AC\",\n  publishDate: formatDate(new Date()),\n  introText: \"Hello AI Citizens 🤖,\",\n  introBody: \"From breakthrough AI research to major funding rounds, the tech landscape continues to evolve at breakneck speed. This week brings us exciting developments in autonomous systems, cybersecurity enhancements, and innovative applications across industries. Here's your comprehensive roundup of the most important AI and tech news shaping our digital future.\",\n  sectionTitle: \"Here are the top stories:\",\n  articles: transformedArticles,\n  totalArticles: transformedArticles.length,\n  latestArticles: transformedArticles.filter(article => article.isLatest).length,\n  categories: [...new Set(transformedArticles.map(article => article.category))],\n  avgImportance: transformedArticles.length\n    ? (transformedArticles.reduce((sum, article) => sum + article.importance, 0) / transformedArticles.length).toFixed(1)\n    : \"0.0\"\n};\n\nconsole.log(`Final output: ${htmlData.totalArticles} articles, ${htmlData.categories.length} categories`);\n\nreturn [{\n  json: htmlData\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2368,
+        -592
+      ],
+      "id": "46c818d1-0700-43e9-80a4-6ad001f5613e",
+      "name": "Clean + Analyze Articles for HTML"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract articles from the input data\nconst inputData = $input.first().json;\nconsole.log(\"Input data received:\", inputData.title);\n\n// Get the articles array\nconst articles = inputData.articles || [];\nconsole.log(`Found ${articles.length} articles to extract`);\n\nif (articles.length === 0) {\n  throw new Error(\"No articles found in the input data\");\n}\n\n// Normalize keys inside each article\nfunction normalizeKeys(obj) {\n  const newObj = {};\n  for (const key in obj) {\n    if (Object.hasOwn(obj, key)) {\n      newObj[key.toLowerCase()] = obj[key];  // Normalize all keys to lowercase\n    }\n  }\n  return newObj;\n}\n\n// Filter out invalid articles\nconst validArticles = articles.filter((article) => {\n  const normalized = normalizeKeys(article);\n  const title = (normalized.title || '').toLowerCase();\n  const link = (normalized.link || '').trim();\n  \n  // Exclude if title contains 'no' or 'not found' or link is empty\n  return !(title.includes('no') && title.includes('found')) && link !== '';\n});\n\nconsole.log(`Filtered down to ${validArticles.length} valid articles`);\n\n// Extract each article as a separate item\nconst extractedArticles = validArticles.map((article, index) => {\n  const normalizedArticle = normalizeKeys(article);\n  console.log(`Processing article ${index + 1}: ${normalizedArticle.title}`);\n\n  return {\n    json: {\n      ...normalizedArticle,\n      articleIndex: index + 1,\n      totalArticles: validArticles.length,\n      parentTitle: inputData.title,\n      parentSiteName: inputData.siteName,\n      parentPublishDate: inputData.publishDate\n    }\n  };\n});\n\nconsole.log(`Successfully extracted ${extractedArticles.length} articles`);\n\n// Return each article as a separate item\nreturn extractedArticles;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2144,
+        -592
+      ],
+      "id": "e7bd4c4e-ab29-4516-bee9-e141c7998ea7",
+      "name": "Extract Each Article (JSON → Single Item)"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1856,
+        -592
+      ],
+      "id": "ca1e9ac1-19a5-4689-b36f-940749b29421",
+      "name": "Loop: Each Article"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4-turbo",
+          "mode": "list",
+          "cachedResultName": "GPT-4-TURBO"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are an expert AI content writer specializing in summarizing technology news. Your output should be formatted for digital publication and should clearly present:\n\nA concise, engaging summary paragraph\n\nA source line with a clickable hyperlink\n\nA lightbulb emoji 💡 followed by 5-line insight written in italic style\n\nMake the language sharp, professional, and accessible. Avoid filler content.",
+              "role": "system"
+            },
+            {
+              "content": "=Summarize the article from the following HTML content:\n{{ $json.link }}\n{{ $json.content }}\nReturn the result as a JSON object with these two fields:\n\nSummarized_content — include:\n\nA bold title (use ** for markdown),\n\nA one-paragraph summary,\n\nA source link in markdown format ([text](url))\n\ninsight — write 5 key insights, each on a new line, in italic and start with the 💡 emoji.\n\nOutput format:\n\njson\nCopy\nEdit\n{\n  \"Summarized_content\": \"🧠 **Your Bold Headline Here**\\n\\nYour summary paragraph goes here...\\n\\n**Source:** [Link Text](https://example.com)\",\n  \"insight\": \"💡 *Insight one.*\\n💡 *Insight two.*\\n💡 *Insight three.*\\n💡 *Insight four.*\\n💡 *Insight five.*\"\n}\nMake the response clean, engaging, and formatted exactly like this for structured parsing.\n\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -1408,
+        -576
+      ],
+      "id": "9c13209d-0415-4911-bc3e-53c0fb05a41f",
+      "name": " Summarize + Add Insight for Each Article"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.message.content;\n\ntry {\n  const parsed = JSON.parse(raw);\n\n  // Extract first link from summarized content\n  const linkMatch = parsed.Summarized_content.match(/\\[.*?\\]\\((https?:\\/\\/.*?)\\)/);\n  const link = linkMatch ? linkMatch[1] : null;\n\n  // Clean markdown, emojis, and remove \"Source: [...]\" block\n  const cleanText = text => {\n    return (text || '')\n      .replace(/\\n*\\n*\\*{0,2}Source:.*?\\[.*?\\]\\(https?:\\/\\/.*?\\)/gi, '')\n      .replace(/\\*\\*/g, '')         // remove bold **\n      .replace(/\\*/g, '')           // remove italic *\n      .replace(/[\\u{1F300}-\\u{1FAFF}]/gu, '') // remove emojis\n      .trim();\n  };\n\n  return [\n    {\n      json: {\n        Summarized_content: cleanText(parsed.Summarized_content),\n        Insight: cleanText(parsed.insight),\n        Link: link\n      }\n    }\n  ];\n\n} catch (err) {\n  throw new Error(\"Failed to parse content as JSON: \" + err.message);\n}\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -944,
+        -576
+      ],
+      "id": "11051a89-725e-4fc7-b611-867523aba7c7",
+      "name": "Clean Summary & Extract Link"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appGEmHkDqdbaGHJZ",
+          "mode": "list",
+          "cachedResultName": "n8n_test",
+          "cachedResultUrl": "https://airtable.com/appGEmHkDqdbaGHJZ"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblac7s04byCslGME",
+          "mode": "list",
+          "cachedResultName": "Table 5",
+          "cachedResultUrl": "https://airtable.com/appGEmHkDqdbaGHJZ/tblac7s04byCslGME"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Summarized_contetnt": "={{ $json.Summarized_content }}",
+            "Insight": "={{ $json.Insight }}",
+            "Link": "={{ $('Loop: Each Article').item.json.link }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Link",
+              "displayName": "Link",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Summarized_contetnt",
+              "displayName": "Summarized_contetnt",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Insight",
+              "displayName": "Insight",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -656,
+        -576
+      ],
+      "id": "f8cd49b9-a180-47e1-ac9b-53d15f01fe2a",
+      "name": " Store Summarized Data in Airtable"
+    },
+    {
+      "parameters": {
+        "jsCode": "const currentItems = $input.all();\nconst codeItem = $('Clean + Analyze Articles for HTML').first().json;\nconst codeArticles = codeItem.articles;\n\n// Your debug logs...\nconsole.log(\"currentItems length:\", currentItems.length);\nconsole.log(\"currentItems:\", currentItems);\nconsole.log(\"codeItem:\", codeItem);\nconsole.log(\"codeArticles:\", codeArticles);\nconsole.log(\"codeArticles length:\", codeArticles?.length);\n\n// Normalize URLs\nconst normalizeUrl = url => {\n  return (url || '')\n    .trim()\n    .replace(/\\/+$/, '');\n};\n\n// Clean formatting\nconst cleanText = text => {\n  return (text || '')\n    .replace(/\\*\\*/g, '')\n    .replace(/\\*/g, '')\n    .replace(/[\\u{1F300}-\\u{1FAFF}]/gu, '')\n    .trim();\n};\n\n// Build merged articles\nconst mergedArticles = codeArticles.reduce((acc, article) => {\n  console.log(acc, \"====acc==\")\n  const articleLink = normalizeUrl(article.link);\n  console.log(\"Looking for article link:\", articleLink);\n  \n  const matchedItem = currentItems.find(item => {\n    const itemLink = normalizeUrl(item.json?.fields?.Link);\n    console.log(itemLink, \"===item link==\")\n    console.log(\"Comparing:\", itemLink, \"vs\", articleLink);\n    return itemLink === articleLink;\n  });\n  \n  if (matchedItem) {\n    acc.push({\n      ...article, // Spread all original article properties\n      Summarized_contetnt: cleanText(matchedItem.json?.fields?.Summarized_contetnt),\n      Insight: cleanText(matchedItem.json?.fields?.Insight)\n    });\n  }\n  return acc;\n}, []);\n\nconsole.log(mergedArticles, \"====merged articles===+++\");\n\nreturn [\n  {\n    json: {\n      articles: mergedArticles\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1536,
+        -752
+      ],
+      "id": "9cf7ab47-716e-41f2-b2d3-addc18b5c8db",
+      "name": " Merge Articles + Add Insights"
+    },
+    {
+      "parameters": {
+        "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Top AI & Tech News - July 2025</title>\n    <style>\n        * {\n            margin: 0;\n            padding: 0;\n            box-sizing: border-box;\n        }\n\n        body {\n            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;\n            line-height: 1.6;\n            color: #1a1a1a;\n            background-color: #ffffff;\n        }\n\n        .header-nav {\n            background: white;\n            border-bottom: 1px solid #e5e5e5;\n            padding: 12px 0;\n            position: sticky;\n            top: 0;\n            z-index: 100;\n        }\n\n        .nav-container {\n            max-width: 1200px;\n            margin: 0 auto;\n            display: flex;\n            align-items: center;\n            justify-content: space-between;\n            padding: 0 20px;\n        }\n\n        .logo {\n            display: flex;\n            align-items: center;\n            gap: 8px;\n            font-weight: 600;\n            font-size: 1.1rem;\n        }\n\n        .logo-icon {\n            width: 32px;\n            height: 32px;\n            background: #000;\n            border-radius: 50%;\n            display: flex;\n            align-items: center;\n            justify-content: center;\n            color: white;\n            font-size: 0.8rem;\n        }\n\n        .nav-links {\n            display: flex;\n            gap: 24px;\n            align-items: center;\n        }\n\n        .nav-links a {\n            text-decoration: none;\n            color: #666;\n            font-size: 0.9rem;\n        }\n\n        .join-btn {\n            background: #000;\n            color: white !important;\n            padding: 8px 16px;\n            border-radius: 6px;\n            font-weight: 500;\n        }\n\n        .container {\n            max-width: 800px;\n            margin: 0 auto;\n            padding: 40px 20px;\n        }\n\n        .breadcrumb {\n            font-size: 0.85rem;\n            color: #666;\n            margin-bottom: 20px;\n        }\n\n        .breadcrumb a {\n            color: #666;\n            text-decoration: none;\n        }\n\n        .page-title {\n            font-size: 2.5rem;\n            font-weight: 700;\n            color: #1a1a1a;\n            margin-bottom: 16px;\n            line-height: 1.2;\n        }\n\n        .subtitle {\n            font-size: 1.1rem;\n            color: #666;\n            margin-bottom: 24px;\n            display: flex;\n            align-items: center;\n            gap: 8px;\n        }\n\n        .emoji {\n            font-size: 1.2rem;\n        }\n\n        .author-info {\n            display: flex;\n            align-items: center;\n            gap: 12px;\n            margin-bottom: 32px;\n            padding-bottom: 24px;\n            border-bottom: 1px solid #e5e5e5;\n        }\n\n        .author-avatar {\n            width: 40px;\n            height: 40px;\n            background: #000;\n            border-radius: 50%;\n            display: flex;\n            align-items: center;\n            justify-content: center;\n            color: white;\n            font-size: 0.8rem;\n            font-weight: 600;\n        }\n      .clickable-article {\n    text-decoration: none;\n    color: inherit;\n    display: block;\n    transition: transform 0.2s ease, box-shadow 0.2s ease;\n}\n\n.clickable-article * {\n    text-decoration: none !important;\n    color: inherit;\n}\n\n\n        .author-details h4 {\n            font-weight: 600;\n            font-size: 0.95rem;\n            margin-bottom: 2px;\n        }\n\n        .author-details .date {\n            font-size: 0.85rem;\n            color: #666;\n        }\n\n        .hero-video {\n            width: 100%;\n            height: 300px;\n            background: linear-gradient(135deg, #1a2332 0%, #2d4a5c 100%);\n            border-radius: 12px;\n            position: relative;\n            margin-bottom: 32px;\n            overflow: hidden;\n            display: flex;\n            align-items: center;\n            justify-content: center;\n        }\n\n        .hero-content {\n            text-align: center;\n            color: white;\n            padding: 20px;\n        }\n\n        .hero-content h2 {\n            font-size: 2rem;\n            font-weight: 700;\n            margin-bottom: 8px;\n            text-shadow: 0 2px 4px rgba(0,0,0,0.3);\n        }\n\n        .hero-content p {\n            font-size: 1rem;\n            opacity: 0.9;\n            text-shadow: 0 1px 2px rgba(0,0,0,0.3);\n        }\n\n        .intro-text {\n            font-size: 1rem;\n            line-height: 1.7;\n            color: #444;\n            margin-bottom: 32px;\n            font-style: italic;\n        }\n\n        .intro-text strong {\n            color: #1a1a1a;\n            font-weight: 600;\n        }\n\n        .section-header {\n            font-size: 1.1rem;\n            font-weight: 600;\n            color: #1a1a1a;\n            margin: 40px 0 24px 0;\n        }\n\n        .news-list {\n          list-style: disc; \n          padding-left: 20px;\n            /* list-style: none; */\n          /* color: #1a1a1a;\n        text-decoration: none;\n        font-weight: 500;\n        font-size: 1rem; */\n        }\n\n        .news-list li {\n            margin-bottom: 12px;\n            padding-left: 20px;\n            position: relative;\n        }\n\n        .news-list li:before {\n            content: \"•\";\n            color: #333;\n            font-weight: bold;\n            position: absolute;\n            left: 0;\n        }\n\n        /* .news-list a {\n            color: #1a1a1a;\n            text-decoration: none;\n            font-weight: 500;\n            font-size: 1rem;\n        } */\n\n      .news-list a {\n          color: #1a0dab; /* Traditional blue link */\n          text-decoration: underline;\n          font-weight: 500;\n          font-size: 1rem;\n      }\n\n\n        .news-list a:hover {\n            color: #0066cc;\n        }\n\n        .news-article {\n            margin: 48px 0;\n            padding: 32px 0;\n            border-top: 1px solid #e5e5e5;\n        }\n\n        .news-article:first-child {\n            border-top: none;\n            margin-top: 24px;\n        }\n\n        .article-header {\n            margin-bottom: 20px;\n        }\n\n        .article-emoji {\n            font-size: 1.4rem;\n            margin-right: 8px;\n        }\n\n        .article-title {\n            font-size: 1.4rem;\n            font-weight: 600;\n            color: #1a1a1a;\n            line-height: 1.3;\n            margin-bottom: 16px;\n        }\n\n        .article-image {\n            width: 100%;\n            height: 200px;\n            background: linear-gradient(45deg, #f0f0f0, #e0e0e0);\n            border-radius: 8px;\n            margin-bottom: 20px;\n            position: relative;\n            overflow: hidden;\n        }\n\n        .image-overlay {\n            position: absolute;\n            bottom: 0;\n            left: 0;\n            right: 0;\n            background: linear-gradient(transparent, rgba(0,0,0,0.7));\n            color: white;\n            padding: 16px;\n        }\n\n        .latest-badge {\n            position: absolute;\n            top: 12px;\n            left: 12px;\n            background: #00c851;\n            color: white;\n            padding: 4px 8px;\n            border-radius: 4px;\n            font-size: 0.7rem;\n            font-weight: 600;\n            text-transform: uppercase;\n        }\n\n        .image-overlay h3 {\n            font-size: 1.1rem;\n            font-weight: 600;\n            margin-bottom: 4px;\n        }\n\n      .article-category {\n    display: inline-block;\n    background-color: #eef2f7;\n    color: #007acc;\n    font-size: 0.85rem;\n    font-weight: 600;\n    padding: 4px 10px;\n    border-radius: 6px;\n    margin-bottom: 12px;\n    text-transform: uppercase;\n    letter-spacing: 0.5px;\n}\n\n\n        .article-content {\n            font-size: 0.95rem;\n            line-height: 1.6;\n            color: #444;\n            margin-bottom: 16px;\n        }\n\n        .article-content a {\n            color: #0066cc;\n            text-decoration: none;\n        }\n\n        .article-content a:hover {\n            text-decoration: underline;\n        }\n\n        .article-source {\n            font-size: 0.85rem;\n            color: #666;\n            font-weight: 500;\n        }\n\n        .insight-box {\n            background: #fffbf0;\n            border-left: 4px solid #ffc107;\n            padding: 16px 20px;\n            margin: 20px 0;\n            border-radius: 0 8px 8px 0;\n        }\n\n        .insight-box::before {\n            content: \"💡\";\n            margin-right: 8px;\n        }\n\n        .insight-box p {\n            font-size: 0.9rem;\n            color: #444;\n            line-height: 1.5;\n            font-style: italic;\n        }\n\n        .video-embed {\n            width: 100%;\n            height: 250px;\n            background: #000;\n            border-radius: 8px;\n            margin: 20px 0;\n            position: relative;\n            overflow: hidden;\n        }\n\n        .video-placeholder {\n            width: 100%;\n            height: 100%;\n            background: linear-gradient(45deg, #1a1a1a, #333);\n            display: flex;\n            align-items: center;\n            justify-content: center;\n            color: white;\n        }\n\n        .play-button {\n            width: 60px;\n            height: 60px;\n            background: #ff0000;\n            border-radius: 50%;\n            display: flex;\n            align-items: center;\n            justify-content: center;\n            color: white;\n            font-size: 1.5rem;\n        }\n\n        /* Debug button styling */\n        .debug-button {\n            position: fixed;\n            top: 100px;\n            right: 20px;\n            background: #007bff;\n            color: white;\n            border: none;\n            padding: 10px 20px;\n            border-radius: 5px;\n            cursor: pointer;\n            font-size: 14px;\n            z-index: 1000;\n        }\n\n        .debug-button:hover {\n            background: #0056b3;\n        }\n\n        @media (max-width: 768px) {\n            .nav-links {\n                display: none;\n            }\n            \n            .container {\n                padding: 20px 16px;\n            }\n            \n            .page-title {\n                font-size: 2rem;\n            }\n            \n            .hero-video {\n                height: 200px;\n            }\n            \n            .hero-content h2 {\n                font-size: 1.5rem;\n            }\n        }\n    </style>\n</head>\n<body>\n    \n    <!-- Navigation Header -->\n    <nav class=\"header-nav\">\n        <div class=\"nav-container\">\n            <div class=\"logo\">\n                <div class=\"logo-icon\">AC</div>\n                <span>The AI Citizen</span>\n            </div>\n            <!-- <div class=\"nav-links\">\n                <a href=\"#\">Categories</a>\n                <a href=\"#\">Discord Channel</a>\n                <a href=\"#\">GPTs</a>\n                <a href=\"#\">The AI Citizen Program</a>\n                <a href=\"#\">Login</a>\n                <a href=\"#\" class=\"join-btn\">Join us</a>\n            </div> -->\n        </div>\n    </nav>\n\n    <!-- Main Content -->\n    <div class=\"container\">\n\n        <!-- Page Title -->\n        <h1 class=\"page-title\">Top AI & Tech News (Through {{ $('Clean + Analyze Articles for HTML').first().json.publishDate }})</h1>\n        \n        <!-- Subtitle -->\n        <div class=\"subtitle\">\n            <!-- <span class=\"emoji\">💎</span> Trillion Dollar Investment | \n            <span class=\"emoji\">🏥</span> Robotic Heart Surgery | \n            <span class=\"emoji\">🚀</span> Surge AI -->\n        </div>\n\n        <!-- Author Info -->\n        <div class=\"author-info\">\n            <div class=\"author-avatar\">AC</div>\n            <div class=\"author-details\">\n                <h4>The AI Citizen</h4>\n                <div class=\"date\">{{ $('Clean + Analyze Articles for HTML').first().json.publishDate }})</h1>\n        </div>\n            </div>\n        </div>\n\n        <!-- Hero Video Section -->\n        <div class=\"hero-video\">\n            <div class=\"hero-content\">\n                <h2>TOP AI & TECH NEWS</h2>\n                <p>THROUGH {{ $('Clean + Analyze Articles for HTML').first().json.publishDate }})</h1>\n        </p>\n            </div>\n        </div>\n\n        <!-- Introduction Text -->\n        <div class=\"intro-text\">\n            Hello AI Citizens 🤖,\n            <br><br>\n            Before an AI model can write poetry, spot anomalies, or answer questions with human-like fluency, it must first learn—and that learning begins with <strong>data labeling</strong>. Data labeling is the essential process of tagging and organizing raw data (like images, audio, video, and text) so machines can make sense of the world. The quality, scale, and nuance of data labeling directly affect how accurate, ethical, and useful an AI model becomes. That's why tech giants like OpenAI, Meta, Google, and Anthropic spend hundreds of millions annually on labeling infrastructure—and why the recent rivalry between Meta-backed Scale AI and the quietly dominant, bootstrapped Surge AI is making headlines. As AI systems grow more sophisticated, labeling must evolve too—supporting not just classification but complex reasoning, emotional tone, bias identification, and even multi-modal context. It's the backbone of all generative breakthroughs, and it's why even the most powerful superintelligence starts with... a label.\n        </div>\n\n        <!-- News Headlines Section -->\n        <div class=\"section-header\">Here are the key headlines shaping the AI & tech landscape:</div>\n        \n        <ul class=\"news-list\" id=\"newsList\">\n            <li><a href=\"{{ $json.articles[0].link }}\" target=\"_blank\">{{ $json.articles[0].title }}</a></li>\n            <li><a href=\"{{ $json.articles[1].link }}\" target=\"_blank\">{{ $json.articles[1].title }}</a></li>\n            <li><a href=\"{{ $json.articles[2].link }}\" target=\"_blank\">{{ $json.articles[2].title }}</a></li>\n           <li><a href=\"{{ $json.articles[3].link }}\" target=\"_blank\">{{ $json.articles[3].title }}</a></li>\n            <li><a href=\"{{ $json.articles[4].link }}\" target=\"_blank\">{{ $json.articles[4].title }}</a></li>\n            <li><a href=\"{{ $json.articles[5].link }}\" target=\"_blank\">{{ $json.articles[5].title }}</a></li>\n           <li><a href=\"{{ $json.articles[6].link }}\" target=\"_blank\">{{ $json.articles[6].title }}</a></li>\n        </ul>\n\n        <div class=\"section-header\">Let's recap!</div>\n\n        <!-- News Articles -->\n        <div id=\"newsArticles\">\n            <article class=\"news-article\">\n\n            \n              <a href=\"{{ $json.articles[0].link }}\" target=\"_blank\" class=\"clickable-article\">\n                <div class=\"article-header\">\n                   <div class=\"article-category\">{{ $json.articles[0].category }}</div>\n                    <h2 class=\"article-title\">\n                        <span class=\"article-emoji\">🚀</span>\n                      {{ $json.articles[0].title }}\n                    </h2>\n                </div>\n                <div class=\"article-image\">\n                    <div class=\"latest-badge\">LATEST</div>\n                    <div class=\"image-overlay\">\n                        <h3>{{ $json.articles[0].title }}</h3>\n                    \n                    </div>\n                </div>\n                </a>\n                <div class=\"article-content\">\n                    <!-- {{ $json.articles[0].content }} -->\n                  🧠 {{ $json.articles[0].Summarized_contetnt }}\n                   \n                </div>\n\n              <div class=\"article-insight\">\n                    <!-- {{ $json.articles[0].content }} -->\n                 💡{{ $json.articles[0].Insight }}\n                   \n                </div>\n                <!-- <div class=\"article-source\">{{ $json.articles[0].source }}</div> -->\n            <div class=\"article-source\">\n  <a href=\"{{ $json.articles[0].link }}\" target=\"_blank\">\n    {{ $json.articles[0].source }}\n  </a>\n</div>\n\n            \n            </article>\n\n\n          <article class=\"news-article\">\n\n            \n              <a href=\"{{ $json.articles[1].link }}\" target=\"_blank\" class=\"clickable-article\">\n                <div class=\"article-header\">\n                   <div class=\"article-category\">{{ $json.articles[1].category }}</div>\n                    <h2 class=\"article-title\">\n                        <span class=\"article-emoji\">🚀</span>\n                      {{ $json.articles[1].title }}\n                    </h2>\n                </div>\n                <div class=\"article-image\">\n                    <div class=\"latest-badge\">LATEST</div>\n                    <div class=\"image-overlay\">\n                        <h3>{{ $json.articles[1].title }}</h3>\n                    \n                    </div>\n                </div>\n                </a>\n                <div class=\"article-content\">\n                    <!-- {{ $json.articles[0].content }} -->\n                  🧠{{ $json.articles[1].Summarized_contetnt }}\n                   \n                </div>\n\n              <div class=\"article-insight\">\n                    <!-- {{ $json.articles[0].content }} -->\n                 💡{{ $json.articles[1].Insight }}\n                   \n                </div>\n                <!-- <div class=\"article-source\">{{ $json.articles[1].source }}</div> -->\n\n            <div class=\"article-source\">\n  <a href=\"{{ $json.articles[1].link }}\" target=\"_blank\">\n    {{ $json.articles[1].source }}\n  </a>\n</div>\n          \n          </article>\n\n\n\n          <article class=\"news-article\">\n\n            \n              <a href=\"{{ $json.articles[2].link }}\" target=\"_blank\" class=\"clickable-article\">\n                <div class=\"article-header\">\n                   <div class=\"article-category\">{{ $json.articles[2].category }}</div>\n                    <h2 class=\"article-title\">\n                        <span class=\"article-emoji\">🚀</span>\n                     {{ $json.articles[2].title }}\n                    </h2>\n                </div>\n                <div class=\"article-image\">\n                    <div class=\"latest-badge\">LATEST</div>\n                    <div class=\"image-overlay\">\n                        <h3>{{ $json.articles[2].title }}</h3>\n                    \n                    </div>\n                </div>\n                </a>\n                <div class=\"article-content\">\n                    <!-- {{ $json.articles[0].content }} -->\n                  🧠{{ $json.articles[2].Summarized_contetnt }}\n                   \n                </div>\n\n              <div class=\"article-insight\">\n                    <!-- {{ $json.articles[0].content }} -->\n                 💡{{ $json.articles[2].Insight }}\n                   \n                </div>\n                <!-- <div class=\"article-source\">{{ $json.articles[2].source }}</div> -->\n            \n          <div class=\"article-source\">\n  <a href=\"{{ $json.articles[2].link }}\" target=\"_blank\">\n    {{ $json.articles[2].source }}\n  </a>\n</div>\n          </article>\n\n\n          <article class=\"news-article\">\n\n            \n              <a href=\"{{ $json.articles[3].link }}\" target=\"_blank\" class=\"clickable-article\">\n                <div class=\"article-header\">\n                   <div class=\"article-category\">{{ $json.articles[3].category }}</div>\n                    <h2 class=\"article-title\">\n                        <span class=\"article-emoji\">🚀</span>\n                     {{ $json.articles[3].title }}\n                    </h2>\n                </div>\n                <div class=\"article-image\">\n                    <div class=\"latest-badge\">LATEST</div>\n                    <div class=\"image-overlay\">\n                        <h3>{{ $json.articles[3].title }}</h3>\n                    \n                    </div>\n                </div>\n                </a>\n                <div class=\"article-content\">\n                    <!-- {{ $json.articles[0].content }} -->\n                  🧠{{ $json.articles[3].Summarized_contetnt }}\n                   \n                </div>\n\n              <div class=\"article-insight\">\n                    <!-- {{ $json.articles[0].content }} -->\n                 💡{{ $json.articles[3].Insight }}\n                   \n                </div>\n                <!-- <div class=\"article-source\">{{ $json.articles[3].source }}</div> -->\n            \n          <div class=\"article-source\">\n  <a href=\"{{ $json.articles[3].link }}\" target=\"_blank\">\n    {{ $json.articles[3].source }}\n  </a>\n</div>\n          \n          </article>\n\n\n          <article class=\"news-article\">\n\n            \n              <a href=\"{{ $json.articles[4].link }}\" target=\"_blank\" class=\"clickable-article\">\n                <div class=\"article-header\">\n                   <div class=\"article-category\">{{ $json.articles[4].category }}</div>\n                    <h2 class=\"article-title\">\n                        <span class=\"article-emoji\">🚀</span>\n                      {{ $json.articles[4].title }}\n                    </h2>\n                </div>\n                <div class=\"article-image\">\n                    <div class=\"latest-badge\">LATEST</div>\n                    <div class=\"image-overlay\">\n                        <h3>{{ $json.articles[4].title }}</h3>\n                    \n                    </div>\n                </div>\n                </a>\n                <div class=\"article-content\">\n                    <!-- {{ $json.articles[0].content }} -->\n                  🧠{{ $json.articles[4].Summarized_contetnt }}\n                   \n                </div>\n\n              <div class=\"article-insight\">\n                    <!-- {{ $json.articles[0].content }} -->\n                 💡{{ $json.articles[4].Insight }}\n                   \n                </div>\n                <!-- <div class=\"article-source\"></div>{{ $json.articles[4].source }} -->\n\n            <div class=\"article-source\">\n  <a href=\"{{ $json.articles[4].link }}\" target=\"_blank\">\n    {{ $json.articles[4].source }}\n  </a>\n</div>\n          \n          \n          </article>\n\n\n          <article class=\"news-article\">\n\n            \n              <a href=\"{{ $json.articles[5].link }}\" target=\"_blank\" class=\"clickable-article\">\n                <div class=\"article-header\">\n                   <div class=\"article-category\">{{ $json.articles[5].category }}</div>\n                    <h2 class=\"article-title\">\n                        <span class=\"article-emoji\">🚀</span>\n                      {{ $json.articles[5].title }}\n                    </h2>\n                </div>\n                <div class=\"article-image\">\n                    <div class=\"latest-badge\">LATEST</div>\n                    <div class=\"image-overlay\">\n                        <h3>{{ $json.articles[5].title }}</h3>\n                    \n                    </div>\n                </div>\n                </a>\n                <div class=\"article-content\">\n                    <!-- {{ $json.articles[0].content }} -->\n                  🧠{{ $json.articles[5].Summarized_contetnt }}\n                   \n                </div>\n\n              <div class=\"article-insight\">\n                    <!-- {{ $json.articles[0].content }} -->\n                 💡{{ $json.articles[5].Insight }}\n                   \n                </div>\n                <!-- <div class=\"article-source\">{{ $json.articles[5].source }}</div> -->\n          <div class=\"article-source\">\n  <a href=\"{{ $json.articles[5].link }}\" target=\"_blank\">\n    {{ $json.articles[5].source }}\n  </a>\n</div>  \n          \n          </article>\n\n\n          <article class=\"news-article\">\n\n            \n              <a href=\"{{ $json.articles[6].link }}\" target=\"_blank\" class=\"clickable-article\">\n                <div class=\"article-header\">\n                   <div class=\"article-category\">{{ $json.articles[6].category }}</div>\n                    <h2 class=\"article-title\">\n                        <span class=\"article-emoji\">🚀</span>\n                     {{ $json.articles[6].title }}\n                    </h2>\n                </div>\n                <div class=\"article-image\">\n                    <div class=\"latest-badge\">LATEST</div>\n                    <div class=\"image-overlay\">\n                        <h3>{{ $json.articles[6].title }}</h3>\n                    \n                    </div>\n                </div>\n                </a>\n                <div class=\"article-content\">\n                    <!-- {{ $json.articles[0].content }} -->\n                  🧠{{ $json.articles[6].Summarized_contetnt }}\n                   \n                </div>\n\n              <div class=\"article-insight\">\n                    <!-- {{ $json.articles[0].content }} -->\n                 💡{{ $json.articles[6].Insight }}\n                   \n                </div>\n                <!-- <div class=\"article-source\">{{ $json.articles[6].source }}</div> -->\n           \n          <div class=\"article-source\">\n  <a href=\"{{ $json.articles[6].link }}\" target=\"_blank\">\n    {{ $json.articles[6].source }}\n  </a>\n</div>\n          \n          </article>\n            \n        </div>\n    </div>\n</body>\n</html>"
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        352,
+        192
+      ],
+      "id": "b8a0eab7-f726-4dba-ab95-5633cb84e1ca",
+      "name": "Build HTML Newsletter"
+    },
+    {
+      "parameters": {
+        "sendTo": "sam@waiu.org",
+        "subject": "📰 Your Weekly AI Newsletter",
+        "message": "={{ $json.html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        688,
+        -896
+      ],
+      "id": "1f1aa811-e398-4a8c-a301-72c0d45c5bbf",
+      "name": "Send Newsletter via Gmail",
+      "webhookId": "6b1fad78-a1d7-45c0-bd5e-9eda60e1c48e"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -4144,
+        -688
+      ],
+      "id": "9573fecd-aef6-466d-9569-5ed4a7c034a5",
+      "name": "Daily Trigger (6 AM)"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                5
+              ],
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -4144,
+        -496
+      ],
+      "id": "4f08a7e9-4241-4913-b18e-43ba7923077f",
+      "name": "Weekly Trigger (Friday 6 AM)"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8a9e746c-9dc4-4c7f-bdda-6229280478d4",
+              "name": "mode",
+              "value": "daily",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3888,
+        -688
+      ],
+      "id": "22310874-76c1-43c1-94ee-1807fb7db70d",
+      "name": " Set Mode = Daily"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f36c5433-5e4b-4338-b979-d366acb2e7a4",
+              "name": "mode",
+              "value": "weekly",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3888,
+        -496
+      ],
+      "id": "a5f2b41e-2fbd-4116-9bce-25f1ff751fdc",
+      "name": "Set Mode = Weekly"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.mode }}",
+                    "rightValue": "daily",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "b45f961b-f9c7-471a-99a7-ff655eb5ed98"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "f1db2885-598f-4d7e-8c92-6ffbdf3dd69b",
+                    "leftValue": "={{ $json.mode }}",
+                    "rightValue": "weekly",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -3584,
+        -608
+      ],
+      "id": "2603dc1e-776a-42c4-809d-59f416ff086e",
+      "name": "Choose Between Daily or Weekly Mode"
+    },
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/youtube/v3/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "part",
+              "value": "snippet"
+            },
+            {
+              "name": "q",
+              "value": "={{ $json.content }} {{ $json.source }}"
+            },
+            {
+              "name": "type",
+              "value": "video"
+            },
+            {
+              "name": "maxResults",
+              "value": "1"
+            },
+            {
+              "name": "order",
+              "value": "relevance"
+            },
+            {
+              "name": "publishedAfter",
+              "value": "={{ new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() }}"
+            },
+            {
+              "name": "key",
+              "value": "AIzaSyACp416qlxC-o6er3ZIGXWjR4-cAXUlge8"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1088,
+        -880
+      ],
+      "id": "b81cc38e-eb6b-4460-937f-a713b750e2c9",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.item.json;\nconst articles = input.articles || [];\n\nreturn articles.map(article => ({\n  json: {\n    ...article,\n    context: {\n      title: article.title,\n      link: article.link\n    }\n  }\n}));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1280,
+        -880
+      ],
+      "id": "38ada032-3fd7-4f8d-9fee-1eefd744b706",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "jsCode": "const allResponses = await $input.all();\nconst allVideos = [];\n\nfor (let i = 0; i < allResponses.length; i++) {\n  const response = allResponses[i];\n  const youtubeResponse = response.json;\n  const context = response.json?.context || {}; // safe fallback\n\n  if (!youtubeResponse.items || youtubeResponse.items.length === 0) {\n    continue; // Skip if no videos found\n  }\n\n  const videos = youtubeResponse.items.map((item) => {\n    const videoId = item.id?.videoId;\n    const snippet = item.snippet;\n\n    return {\n      index: i,  // Use original response index here\n      videoId,\n      title: snippet?.title?.replace(/&#39;/g, \"'\").replace(/&quot;/g, '\"') || 'No title',\n      description: snippet?.description ? snippet.description.substring(0, 150) + '...' : 'No description',\n      channelTitle: snippet?.channelTitle || '',\n      publishedAt: snippet?.publishedAt || '',\n      thumbnail: snippet?.thumbnails?.high?.url || snippet?.thumbnails?.medium?.url || '',\n      url: `https://www.youtube.com/watch?v=${videoId}`,\n      embedUrl: `https://www.youtube.com/embed/${videoId}`,\n      shareUrl: `https://youtu.be/${videoId}`,\n      articleTitle: context.title || '',\n      articleLink: context.link || ''\n    };\n  });\n\n  allVideos.push(...videos);\n}\n\n// Optional deduplication based on videoId\nconst uniqueVideos = [];\nconst seen = new Set();\n\nfor (const video of allVideos) {\n  if (!seen.has(video.videoId)) {\n    seen.add(video.videoId);\n    uniqueVideos.push(video);\n  }\n}\n\nreturn uniqueVideos.map(video => ({ json: video }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -848,
+        -880
+      ],
+      "id": "49b1c439-8f26-408f-956c-ee0309bec152",
+      "name": "Process YouTube Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $(' Merge Articles + Add Insights').first().json;\nconst youtube_data = $(\"Process YouTube Results\").first().json;\n\nconsole.log(data, '=== merged article data ===');\nconsole.log(youtube_data, \"=== youtube data ===\");\n\nlet combine_output = [...data.articles];\n\n// Normalize to array\nconst youtubeArray = Array.isArray(youtube_data) ? youtube_data : [youtube_data];\n\n// Loop through YouTube data and enrich articles\nyoutubeArray.forEach(video => {\n  const idx = video.index;\n  if (combine_output[idx]) {\n    combine_output[idx].youtubeThumbnail = video.thumbnail;\n    combine_output[idx].youtubeUrl = video.url;\n    combine_output[idx].youtubeEmbedUrl = video.embedUrl;\n    combine_output[idx].youtubeTitle = video.title;\n  }\n});\n\nconsole.log(combine_output, '=== combined output ===');\n\n\nreturn combine_output\n  \n      \n  \n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -624,
+        -880
+      ],
+      "id": "b2d23358-b7a9-4eaf-9272-014c3dd4693f",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Top AI & Tech News - July 2025</title>\n    <style>\n        * {\n            margin: 0;\n            padding: 0;\n            box-sizing: border-box;\n        }\n\n        body {\n            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;\n            line-height: 1.6;\n            color: #1a1a1a;\n            background-color: #ffffff;\n        }\n\n        .header-nav {\n            background: white;\n            border-bottom: 1px solid #e5e5e5;\n            padding: 12px 0;\n            position: sticky;\n            top: 0;\n            z-index: 100;\n        }\n\n        .nav-container {\n            max-width: 1200px;\n            margin: 0 auto;\n            display: flex;\n            align-items: center;\n            justify-content: space-between;\n            padding: 0 20px;\n        }\n\n        .logo {\n            display: flex;\n            align-items: center;\n            gap: 8px;\n            font-weight: 600;\n            font-size: 1.1rem;\n        }\n\n        .logo-icon {\n            width: 32px;\n            height: 32px;\n            background: #000;\n            border-radius: 50%;\n            display: flex;\n            align-items: center;\n            justify-content: center;\n            color: white;\n            font-size: 0.8rem;\n        }\n\n        .nav-links {\n            display: flex;\n            gap: 24px;\n            align-items: center;\n        }\n\n        .nav-links a {\n            text-decoration: none;\n            color: #666;\n            font-size: 0.9rem;\n        }\n\n        .join-btn {\n            background: #000;\n            color: white !important;\n            padding: 8px 16px;\n            border-radius: 6px;\n            font-weight: 500;\n        }\n\n        .container {\n            max-width: 800px;\n            margin: 0 auto;\n            padding: 40px 20px;\n        }\n\n        .breadcrumb {\n            font-size: 0.85rem;\n            color: #666;\n            margin-bottom: 20px;\n        }\n\n        .breadcrumb a {\n            color: #666;\n            text-decoration: none;\n        }\n\n        .page-title {\n            font-size: 2.5rem;\n            font-weight: 700;\n            color: #1a1a1a;\n            margin-bottom: 16px;\n            line-height: 1.2;\n        }\n\n        .subtitle {\n            font-size: 1.1rem;\n            color: #666;\n            margin-bottom: 24px;\n            display: flex;\n            align-items: center;\n            gap: 8px;\n        }\n\n        .emoji {\n            font-size: 1.2rem;\n        }\n\n        .author-info {\n            display: flex;\n            align-items: center;\n            gap: 12px;\n            margin-bottom: 32px;\n            padding-bottom: 24px;\n            border-bottom: 1px solid #e5e5e5;\n        }\n\n        .author-avatar {\n            width: 40px;\n            height: 40px;\n            background: #000;\n            border-radius: 50%;\n            display: flex;\n            align-items: center;\n            justify-content: center;\n            color: white;\n            font-size: 0.8rem;\n            font-weight: 600;\n        }\n      .clickable-article {\n    text-decoration: none;\n    color: inherit;\n    display: block;\n    transition: transform 0.2s ease, box-shadow 0.2s ease;\n}\n\n.clickable-article * {\n    text-decoration: none !important;\n    color: inherit;\n}\n\n\n        .author-details h4 {\n            font-weight: 600;\n            font-size: 0.95rem;\n            margin-bottom: 2px;\n        }\n\n        .author-details .date {\n            font-size: 0.85rem;\n            color: #666;\n        }\n\n        .hero-video {\n            width: 100%;\n            height: 300px;\n            background: linear-gradient(135deg, #1a2332 0%, #2d4a5c 100%);\n            border-radius: 12px;\n            position: relative;\n            margin-bottom: 32px;\n            overflow: hidden;\n            display: flex;\n            align-items: center;\n            justify-content: center;\n        }\n\n        .hero-content {\n            text-align: center;\n            color: white;\n            padding: 20px;\n        }\n\n        .hero-content h2 {\n            font-size: 2rem;\n            font-weight: 700;\n            margin-bottom: 8px;\n            text-shadow: 0 2px 4px rgba(0,0,0,0.3);\n        }\n\n        .hero-content p {\n            font-size: 1rem;\n            opacity: 0.9;\n            text-shadow: 0 1px 2px rgba(0,0,0,0.3);\n        }\n\n        .intro-text {\n            font-size: 1rem;\n            line-height: 1.7;\n            color: #444;\n            margin-bottom: 32px;\n            font-style: italic;\n        }\n\n        .intro-text strong {\n            color: #1a1a1a;\n            font-weight: 600;\n        }\n\n        .section-header {\n            font-size: 1.1rem;\n            font-weight: 600;\n            color: #1a1a1a;\n            margin: 40px 0 24px 0;\n        }\n\n        .news-list {\n          list-style: disc; \n          padding-left: 20px;\n            /* list-style: none; */\n          /* color: #1a1a1a;\n        text-decoration: none;\n        font-weight: 500;\n        font-size: 1rem; */\n        }\n\n        .news-list li {\n            margin-bottom: 12px;\n            padding-left: 20px;\n            position: relative;\n        }\n\n        .news-list li:before {\n            content: \"•\";\n            color: #333;\n            font-weight: bold;\n            position: absolute;\n            left: 0;\n        }\n\n        /* .news-list a {\n            color: #1a1a1a;\n            text-decoration: none;\n            font-weight: 500;\n            font-size: 1rem;\n        } */\n\n      .news-list a {\n          color: #1a0dab; /* Traditional blue link */\n          text-decoration: underline;\n          font-weight: 500;\n          font-size: 1rem;\n      }\n\n\n        .news-list a:hover {\n            color: #0066cc;\n        }\n\n        .news-article {\n            margin: 48px 0;\n            padding: 32px 0;\n            border-top: 1px solid #e5e5e5;\n        }\n\n        .news-article:first-child {\n            border-top: none;\n            margin-top: 24px;\n        }\n\n        .article-header {\n            margin-bottom: 20px;\n        }\n\n        .article-emoji {\n            font-size: 1.4rem;\n            margin-right: 8px;\n        }\n\n        .article-title {\n            font-size: 1.4rem;\n            font-weight: 600;\n            color: #1a1a1a;\n            line-height: 1.3;\n            margin-bottom: 16px;\n        }\n\n        .article-image {\n            width: 100%;\n            height: 200px;\n            background: linear-gradient(45deg, #f0f0f0, #e0e0e0);\n            border-radius: 8px;\n            margin-bottom: 20px;\n            position: relative;\n            overflow: hidden;\n        }\n\n        .image-overlay {\n            position: absolute;\n            bottom: 0;\n            left: 0;\n            right: 0;\n            background: linear-gradient(transparent, rgba(0,0,0,0.7));\n            color: white;\n            padding: 16px;\n        }\n\n        .latest-badge {\n            position: absolute;\n            top: 12px;\n            left: 12px;\n            background: #00c851;\n            color: white;\n            padding: 4px 8px;\n            border-radius: 4px;\n            font-size: 0.7rem;\n            font-weight: 600;\n            text-transform: uppercase;\n        }\n\n        .image-overlay h3 {\n            font-size: 1.1rem;\n            font-weight: 600;\n            margin-bottom: 4px;\n        }\n\n      .article-category {\n    display: inline-block;\n    background-color: #eef2f7;\n    color: #007acc;\n    font-size: 0.85rem;\n    font-weight: 600;\n    padding: 4px 10px;\n    border-radius: 6px;\n    margin-bottom: 12px;\n    text-transform: uppercase;\n    letter-spacing: 0.5px;\n}\n\n\n        .article-content {\n            font-size: 0.95rem;\n            line-height: 1.6;\n            color: #444;\n            margin-bottom: 16px;\n        }\n\n        .article-content a {\n            color: #0066cc;\n            text-decoration: none;\n        }\n\n        .article-content a:hover {\n            text-decoration: underline;\n        }\n\n        .article-source {\n            font-size: 0.85rem;\n            color: #666;\n            font-weight: 500;\n        }\n\n        .insight-box {\n            background: #fffbf0;\n            border-left: 4px solid #ffc107;\n            padding: 16px 20px;\n            margin: 20px 0;\n            border-radius: 0 8px 8px 0;\n        }\n\n        .insight-box::before {\n            content: \"💡\";\n            margin-right: 8px;\n        }\n\n        .insight-box p {\n            font-size: 0.9rem;\n            color: #444;\n            line-height: 1.5;\n            font-style: italic;\n        }\n\n        .video-embed {\n            width: 100%;\n            height: 250px;\n            background: #000;\n            border-radius: 8px;\n            margin: 20px 0;\n            position: relative;\n            overflow: hidden;\n        }\n\n        .video-placeholder {\n            width: 100%;\n            height: 100%;\n            background: linear-gradient(45deg, #1a1a1a, #333);\n            display: flex;\n            align-items: center;\n            justify-content: center;\n            color: white;\n        }\n\n        .play-button {\n            width: 60px;\n            height: 60px;\n            background: #ff0000;\n            border-radius: 50%;\n            display: flex;\n            align-items: center;\n            justify-content: center;\n            color: white;\n            font-size: 1.5rem;\n        }\n\n        /* Debug button styling */\n        .debug-button {\n            position: fixed;\n            top: 100px;\n            right: 20px;\n            background: #007bff;\n            color: white;\n            border: none;\n            padding: 10px 20px;\n            border-radius: 5px;\n            cursor: pointer;\n            font-size: 14px;\n            z-index: 1000;\n        }\n\n        .debug-button:hover {\n            background: #0056b3;\n        }\n\n        @media (max-width: 768px) {\n            .nav-links {\n                display: none;\n            }\n            \n            .container {\n                padding: 20px 16px;\n            }\n            \n            .page-title {\n                font-size: 2rem;\n            }\n            \n            .hero-video {\n                height: 200px;\n            }\n            \n            .hero-content h2 {\n                font-size: 1.5rem;\n            }\n        }\n    </style>\n</head>\n<body>\n    \n    <!-- Navigation Header -->\n    <nav class=\"header-nav\">\n        <div class=\"nav-container\">\n            <div class=\"logo\">\n                <div class=\"logo-icon\">AC</div>\n                <span>The AI Citizen</span>\n            </div>\n            <!-- <div class=\"nav-links\">\n                <a href=\"#\">Categories</a>\n                <a href=\"#\">Discord Channel</a>\n                <a href=\"#\">GPTs</a>\n                <a href=\"#\">The AI Citizen Program</a>\n                <a href=\"#\">Login</a>\n                <a href=\"#\" class=\"join-btn\">Join us</a>\n            </div> -->\n        </div>\n    </nav>\n\n    <!-- Main Content -->\n    <div class=\"container\">\n\n        <!-- Page Title -->\n        <h1 class=\"page-title\">Top AI & Tech News (Through {{ $('Clean + Analyze Articles for HTML').first().json.publishDate }})</h1>\n        \n        <!-- Subtitle -->\n        <div class=\"subtitle\">\n            <!-- <span class=\"emoji\">💎</span> Trillion Dollar Investment | \n            <span class=\"emoji\">🏥</span> Robotic Heart Surgery | \n            <span class=\"emoji\">🚀</span> Surge AI -->\n        </div>\n\n        <!-- Author Info -->\n        <div class=\"author-info\">\n            <div class=\"author-avatar\">AC</div>\n            <div class=\"author-details\">\n                <h4>The AI Citizen</h4>\n                <div class=\"date\">{{ $('Clean + Analyze Articles for HTML').first().json.publishDate }})</h1>\n        </div>\n            </div>\n        </div>\n\n        <!-- Hero Video Section -->\n        <div class=\"hero-video\">\n            <div class=\"hero-content\">\n                <h2>TOP AI & TECH NEWS</h2>\n                <p>THROUGH {{ $('Clean + Analyze Articles for HTML').first().json.publishDate }})</h1>\n        </p>\n            </div>\n        </div>\n\n        <!-- Introduction Text -->\n        <div class=\"intro-text\">\n            Hello AI Citizens 🤖,\n            <br><br>\n            Before an AI model can write poetry, spot anomalies, or answer questions with human-like fluency, it must first learn—and that learning begins with <strong>data labeling</strong>. Data labeling is the essential process of tagging and organizing raw data (like images, audio, video, and text) so machines can make sense of the world. The quality, scale, and nuance of data labeling directly affect how accurate, ethical, and useful an AI model becomes. That's why tech giants like OpenAI, Meta, Google, and Anthropic spend hundreds of millions annually on labeling infrastructure—and why the recent rivalry between Meta-backed Scale AI and the quietly dominant, bootstrapped Surge AI is making headlines. As AI systems grow more sophisticated, labeling must evolve too—supporting not just classification but complex reasoning, emotional tone, bias identification, and even multi-modal context. It's the backbone of all generative breakthroughs, and it's why even the most powerful superintelligence starts with... a label.\n        </div>\n\n        <!-- News Headlines Section -->\n        <div class=\"section-header\">Here are the key headlines shaping the AI & tech landscape:</div>\n        \n        <ul class=\"news-list\" id=\"newsList\">\n            <li><a href=\"{{ $json.articles[0].link }}\" target=\"_blank\">{{ $json.articles[0].title }}</a></li>\n            <li><a href=\"{{ $json.articles[1].link }}\" target=\"_blank\">{{ $json.articles[1].title }}</a></li>\n            <li><a href=\"{{ $json.articles[2].link }}\" target=\"_blank\">{{ $json.articles[2].title }}</a></li>\n           <li><a href=\"{{ $json.articles[3].link }}\" target=\"_blank\">{{ $json.articles[3].title }}</a></li>\n            <li><a href=\"{{ $json.articles[4].link }}\" target=\"_blank\">{{ $json.articles[4].title }}</a></li>\n            <li><a href=\"{{ $json.articles[5].link }}\" target=\"_blank\">{{ $json.articles[5].title }}</a></li>\n           <li><a href=\"{{ $json.articles[6].link }}\" target=\"_blank\">{{ $json.articles[6].title }}</a></li>\n        </ul>\n\n        <div class=\"section-header\">Let's recap!</div>\n\n        <!-- News Articles -->\n        <div id=\"newsArticles\">\n            <article class=\"news-article\">\n\n            \n              <a href=\"{{ $json.articles[0].link }}\" target=\"_blank\" class=\"clickable-article\">\n                <div class=\"article-header\">\n                   <div class=\"article-category\">{{ $json.articles[0].category }}</div>\n                    <h2 class=\"article-title\">\n                        <span class=\"article-emoji\">🚀</span>\n                      {{ $json.articles[0].title }}\n                    </h2>\n                </div>\n                <div class=\"article-image\">\n\n                  <a href=\"{{ $json.articles[0].youtubeUrl }}\" target=\"_blank\">\n  <img src=\"{{ $json.articles[0].youtubeThumbnail }}\" alt=\"Thumbnail\" class=\"thumbnail-image\" />\n</a>\n                  \n                    <div class=\"latest-badge\">LATEST</div>\n                    <div class=\"image-overlay\">\n                        <h3>{{ $json.articles[0].title }}</h3>\n                    \n                    </div>\n                </div>\n                </a>\n                <div class=\"article-content\">\n                    <!-- {{ $json.articles[0].content }} -->\n                  🧠 {{ $json.articles[0].Summarized_contetnt }}\n                   \n                </div>\n\n              <div class=\"article-insight\">\n                    <!-- {{ $json.articles[0].content }} -->\n                 💡{{ $json.articles[0].Insight }}\n                   \n                </div>\n                <!-- <div class=\"article-source\">{{ $json.articles[0].source }}</div> -->\n            <div class=\"article-source\">\n  <a href=\"{{ $json.articles[0].link }}\" target=\"_blank\">\n    {{ $json.articles[0].source }}\n  </a>\n</div>\n\n            \n            </article>\n\n\n          <article class=\"news-article\">\n\n            \n              <a href=\"{{ $json.articles[1].link }}\" target=\"_blank\" class=\"clickable-article\">\n                <div class=\"article-header\">\n                   <div class=\"article-category\">{{ $json.articles[1].category }}</div>\n                    <h2 class=\"article-title\">\n                        <span class=\"article-emoji\">🚀</span>\n                      {{ $json.articles[1].title }}\n                    </h2>\n                </div>\n                <div class=\"article-image\">\n                  <a href=\"{{ $json.articles[1].youtubeUrl }}\" target=\"_blank\">\n  <img src=\"{{ $json.articles[1].youtubeThumbnail }}\" alt=\"Thumbnail\" class=\"thumbnail-image\" />\n</a>\n\n                    <div class=\"latest-badge\">LATEST</div>\n                    <div class=\"image-overlay\">\n                        <h3>{{ $json.articles[1].title }}</h3>\n                    \n                    </div>\n                </div>\n                </a>\n                <div class=\"article-content\">\n                    <!-- {{ $json.articles[0].content }} -->\n                  🧠{{ $json.articles[1].Summarized_contetnt }}\n                   \n                </div>\n\n              <div class=\"article-insight\">\n                    <!-- {{ $json.articles[0].content }} -->\n                 💡{{ $json.articles[1].Insight }}\n                   \n                </div>\n                <!-- <div class=\"article-source\">{{ $json.articles[1].source }}</div> -->\n\n            <div class=\"article-source\">\n  <a href=\"{{ $json.articles[1].link }}\" target=\"_blank\">\n    {{ $json.articles[1].source }}\n  </a>\n</div>\n          \n          </article>\n\n\n\n          <article class=\"news-article\">\n\n            \n              <a href=\"{{ $json.articles[2].link }}\" target=\"_blank\" class=\"clickable-article\">\n                <div class=\"article-header\">\n                   <div class=\"article-category\">{{ $json.articles[2].category }}</div>\n                    <h2 class=\"article-title\">\n                        <span class=\"article-emoji\">🚀</span>\n                     {{ $json.articles[2].title }}\n                    </h2>\n                </div>\n                <div class=\"article-image\">\n                  <a href=\"{{ $json.articles[2].youtubeUrl }}\" target=\"_blank\">\n  <img src=\"{{ $json.articles[2].youtubeThumbnail }}\" alt=\"Thumbnail\" class=\"thumbnail-image\" />\n</a>\n                    <div class=\"latest-badge\">LATEST</div>\n                    <div class=\"image-overlay\">\n                        <h3>{{ $json.articles[2].title }}</h3>\n                    \n                    </div>\n                </div>\n                </a>\n                <div class=\"article-content\">\n                    <!-- {{ $json.articles[0].content }} -->\n                  🧠{{ $json.articles[2].Summarized_contetnt }}\n                   \n                </div>\n\n              <div class=\"article-insight\">\n                    <!-- {{ $json.articles[0].content }} -->\n                 💡{{ $json.articles[2].Insight }}\n                   \n                </div>\n                <!-- <div class=\"article-source\">{{ $json.articles[2].source }}</div> -->\n            \n          <div class=\"article-source\">\n  <a href=\"{{ $json.articles[2].link }}\" target=\"_blank\">\n    {{ $json.articles[2].source }}\n  </a>\n</div>\n          </article>\n\n\n          <article class=\"news-article\">\n\n            \n              <a href=\"{{ $json.articles[3].link }}\" target=\"_blank\" class=\"clickable-article\">\n                <div class=\"article-header\">\n                   <div class=\"article-category\">{{ $json.articles[3].category }}</div>\n                    <h2 class=\"article-title\">\n                        <span class=\"article-emoji\">🚀</span>\n                     {{ $json.articles[3].title }}\n                    </h2>\n                </div>\n                <div class=\"article-image\">\n                  <a href=\"{{ $json.articles[3].youtubeUrl }}\" target=\"_blank\">\n  <img src=\"{{ $json.articles[3].youtubeThumbnail }}\" alt=\"Thumbnail\" class=\"thumbnail-image\" />\n</a>\n                    <div class=\"latest-badge\">LATEST</div>\n                    <div class=\"image-overlay\">\n                        <h3>{{ $json.articles[3].title }}</h3>\n                    \n                    </div>\n                </div>\n                </a>\n                <div class=\"article-content\">\n                    <!-- {{ $json.articles[0].content }} -->\n                  🧠{{ $json.articles[3].Summarized_contetnt }}\n                   \n                </div>\n\n              <div class=\"article-insight\">\n                    <!-- {{ $json.articles[0].content }} -->\n                 💡{{ $json.articles[3].Insight }}\n                   \n                </div>\n                <!-- <div class=\"article-source\">{{ $json.articles[3].source }}</div> -->\n            \n          <div class=\"article-source\">\n  <a href=\"{{ $json.articles[3].link }}\" target=\"_blank\">\n    {{ $json.articles[3].source }}\n  </a>\n</div>\n          \n          </article>\n\n\n          <article class=\"news-article\">\n\n            \n              <a href=\"{{ $json.articles[4].link }}\" target=\"_blank\" class=\"clickable-article\">\n                <div class=\"article-header\">\n                   <div class=\"article-category\">{{ $json.articles[4].category }}</div>\n                    <h2 class=\"article-title\">\n                        <span class=\"article-emoji\">🚀</span>\n                      {{ $json.articles[4].title }}\n                    </h2>\n                </div>\n                <div class=\"article-image\">\n                  <a href=\"{{ $json.articles[4].youtubeUrl }}\" target=\"_blank\">\n  <img src=\"{{ $json.articles[4].youtubeThumbnail }}\" alt=\"Thumbnail\" class=\"thumbnail-image\" />\n</a>\n                    <div class=\"latest-badge\">LATEST</div>\n                    <div class=\"image-overlay\">\n                        <h3>{{ $json.articles[4].title }}</h3>\n                    \n                    </div>\n                </div>\n                </a>\n                <div class=\"article-content\">\n                    <!-- {{ $json.articles[0].content }} -->\n                  🧠{{ $json.articles[4].Summarized_contetnt }}\n                   \n                </div>\n\n              <div class=\"article-insight\">\n                    <!-- {{ $json.articles[0].content }} -->\n                 💡{{ $json.articles[4].Insight }}\n                   \n                </div>\n                <!-- <div class=\"article-source\"></div>{{ $json.articles[4].source }} -->\n\n            <div class=\"article-source\">\n  <a href=\"{{ $json.articles[4].link }}\" target=\"_blank\">\n    {{ $json.articles[4].source }}\n  </a>\n</div>\n          \n          \n          </article>\n\n\n          <article class=\"news-article\">\n\n            \n              <a href=\"{{ $json.articles[5].link }}\" target=\"_blank\" class=\"clickable-article\">\n                <div class=\"article-header\">\n                   <div class=\"article-category\">{{ $json.articles[5].category }}</div>\n                    <h2 class=\"article-title\">\n                        <span class=\"article-emoji\">🚀</span>\n                      {{ $json.articles[5].title }}\n                    </h2>\n                </div>\n                <div class=\"article-image\">\n                  <a href=\"{{ $json.articles[5].youtubeUrl }}\" target=\"_blank\">\n  <img src=\"{{ $json.articles[5].youtubeThumbnail }}\" alt=\"Thumbnail\" class=\"thumbnail-image\" />\n</a>\n                    <div class=\"latest-badge\">LATEST</div>\n                    <div class=\"image-overlay\">\n                        <h3>{{ $json.articles[5].title }}</h3>\n                    \n                    </div>\n                </div>\n                </a>\n                <div class=\"article-content\">\n                    <!-- {{ $json.articles[0].content }} -->\n                  🧠{{ $json.articles[5].Summarized_contetnt }}\n                   \n                </div>\n\n              <div class=\"article-insight\">\n                    <!-- {{ $json.articles[0].content }} -->\n                 💡{{ $json.articles[5].Insight }}\n                   \n                </div>\n                <!-- <div class=\"article-source\">{{ $json.articles[5].source }}</div> -->\n          <div class=\"article-source\">\n  <a href=\"{{ $json.articles[5].link }}\" target=\"_blank\">\n    {{ $json.articles[5].source }}\n  </a>\n</div>  \n          \n          </article>\n\n\n          <article class=\"news-article\">\n\n            \n              <a href=\"{{ $json.articles[6].link }}\" target=\"_blank\" class=\"clickable-article\">\n                <div class=\"article-header\">\n                   <div class=\"article-category\">{{ $json.articles[6].category }}</div>\n                    <h2 class=\"article-title\">\n                        <span class=\"article-emoji\">🚀</span>\n                     {{ $json.articles[6].title }}\n                    </h2>\n                </div>\n                <div class=\"article-image\">\n                  <a href=\"{{ $json.articles[6].youtubeUrl }}\" target=\"_blank\">\n  <img src=\"{{ $json.articles[6].youtubeThumbnail }}\" alt=\"Thumbnail\" class=\"thumbnail-image\" />\n</a>\n                    <div class=\"latest-badge\">LATEST</div>\n                    <div class=\"image-overlay\">\n                        <h3>{{ $json.articles[6].title }}</h3>\n                    \n                    </div>\n                </div>\n                </a>\n                <div class=\"article-content\">\n                    <!-- {{ $json.articles[0].content }} -->\n                  🧠{{ $json.articles[6].Summarized_contetnt }}\n                   \n                </div>\n\n              <div class=\"article-insight\">\n                    <!-- {{ $json.articles[0].content }} -->\n                 💡{{ $json.articles[6].Insight }}\n                   \n                </div>\n                <!-- <div class=\"article-source\">{{ $json.articles[6].source }}</div> -->\n           \n          <div class=\"article-source\">\n  <a href=\"{{ $json.articles[6].link }}\" target=\"_blank\">\n    {{ $json.articles[6].source }}\n  </a>\n</div>\n          \n          </article>\n            \n        </div>\n    </div>\n</body>\n</html>"
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        432,
+        -896
+      ],
+      "id": "6abbad37-1fee-432e-a19b-a5c7b9cc0318",
+      "name": "Prepare Newsletter"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "YOUR_SLACK_WEBHOOK_URL",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "=🧠 *AI News*  \n*Title:* <{{ $json.link }}|{{ $json.title }}>  \n\n📄 {{ $json.Summarized_contetnt }}\n\n💡 {{ $json.Insight }}\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -384,
+        -880
+      ],
+      "id": "6e8a840d-1934-42a2-8426-2074349e53a8",
+      "name": "Send Slack notification"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cd7a5d3d-6007-4cc1-8bbe-35cc5e8ba01c",
+              "leftValue": "={{ $('Choose Between Daily or Weekly Mode').first().json.mode }}",
+              "rightValue": "weekly",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -160,
+        -880
+      ],
+      "id": "b3309bf3-f721-4e62-b70d-72ada3d4eb5e",
+      "name": "Conditional Weekly Email Newsletter",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// const items = $input.all();\n// const items = $(\"Code1\").first().j\n// const articles = items.map(item => item.json);\n\n \nconst items = $(\"Code1\").all();\nconst articles = items.map(item => item.json);\n  \nreturn [\n  {\n    json: {\n      articles: articles\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        -896
+      ],
+      "id": "8fd73d0f-b557-4508-a69d-48b7bf58d2c9",
+      "name": "Compliation of Weekly News for Email Newsletter"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Clean + Analyze Articles for HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    " Fetch Daily Articles from Airtable": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Weekly Articles from Airtable": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean + Analyze Articles for HTML": {
+      "main": [
+        [
+          {
+            "node": "Extract Each Article (JSON → Single Item)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Each Article (JSON → Single Item)": {
+      "main": [
+        [
+          {
+            "node": "Loop: Each Article",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop: Each Article": {
+      "main": [
+        [
+          {
+            "node": " Merge Articles + Add Insights",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": " Summarize + Add Insight for Each Article",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    " Summarize + Add Insight for Each Article": {
+      "main": [
+        [
+          {
+            "node": "Clean Summary & Extract Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Summary & Extract Link": {
+      "main": [
+        [
+          {
+            "node": " Store Summarized Data in Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    " Store Summarized Data in Airtable": {
+      "main": [
+        [
+          {
+            "node": "Loop: Each Article",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    " Merge Articles + Add Insights": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Trigger (6 AM)": {
+      "main": [
+        [
+          {
+            "node": " Set Mode = Daily",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly Trigger (Friday 6 AM)": {
+      "main": [
+        [
+          {
+            "node": "Set Mode = Weekly",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    " Set Mode = Daily": {
+      "main": [
+        [
+          {
+            "node": "Choose Between Daily or Weekly Mode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Mode = Weekly": {
+      "main": [
+        [
+          {
+            "node": "Choose Between Daily or Weekly Mode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Choose Between Daily or Weekly Mode": {
+      "main": [
+        [
+          {
+            "node": " Fetch Daily Articles from Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Weekly Articles from Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Process YouTube Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process YouTube Results": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Send Slack notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Newsletter": {
+      "main": [
+        [
+          {
+            "node": "Send Newsletter via Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Slack notification": {
+      "main": [
+        [
+          {
+            "node": "Conditional Weekly Email Newsletter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conditional Weekly Email Newsletter": {
+      "main": [
+        [
+          {
+            "node": "Compliation of Weekly News for Email Newsletter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compliation of Weekly News for Email Newsletter": {
+      "main": [
+        [
+          {
+            "node": "Prepare Newsletter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "95fa0e0d-4a8d-4591-929a-ec4ae695730c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "05b54d603a4515ed64ab5d16d072571530d1f62cd1eeb1e87bd7aae5ef2d0309"
+  },
+  "id": "BTA5sH16seBLYOHc",
+  "tags": []
+}
